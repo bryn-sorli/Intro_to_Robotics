@@ -26,7 +26,7 @@ int line_center = 1000;
 int line_right = 1000;
 
 // Controller and dTheta update rule settings
-const int current_state = CONTROLLER_GOTO_POSITION_PART2;
+const int current_state = CONTROLLER_GOTO_POSITION_PART3;
 int moving_state;
 
 // Odometry bookkeeping
@@ -111,7 +111,7 @@ void updateOdometry() {
     pose_y = 0.0;
     pose_theta = 0.0;
   }
-  
+
   // Bound theta
   if (pose_theta > M_PI) pose_theta -= 2.*M_PI;
   if (pose_theta <= -M_PI) pose_theta += 2.*M_PI;
@@ -201,6 +201,31 @@ void loop() {
       break;
     case CONTROLLER_GOTO_POSITION_PART3:
       updateOdometry();
+
+      r = WHEEL_RADIUS;
+      d = AXLE_DIAMETER;
+      
+      rho = sqrt(pow(x_r - x_g, 2) + pow(y_r - y_g, 2));
+      alpha = atan2(y_g - y_r, x_g - x_r) - theta_r;
+      eta = theta_g - theta_r;
+
+      x_r_prime = 0.1 * rho;
+      theta_prime = 0.1 * alpha + 0.01 * eta;
+      
+      phi_l_prime = (2*x_r_prime - theta_prime*d) / (2 * r);
+      phi_r_prime = (2*x_r_prime + theta_prime*d) / (2 * r);
+
+      left_wheel_pct;
+      right_wheel_pct;
+      
+      if (phi_l_prime > phi_r_prime) {
+        left_wheel_pct = phi_l_prime / wheel_rotation_speed_maximum;
+        right_wheel_pct = phi_r_prime / wheel_rotation_speed_maximum;
+      } else {
+        left_wheel_pct = phi_l_prime / wheel_rotation_speed_maximum;
+        right_wheel_pct = 1.0;
+      }
+      
       // TODO: Implement solution using motorRotate and proportional feedback controller.
       // sparki.motorRotate function calls for reference:
       //      sparki.motorRotate(MOTOR_LEFT, left_dir, int(left_speed_pct*100.));
