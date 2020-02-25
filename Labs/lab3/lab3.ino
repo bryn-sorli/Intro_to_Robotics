@@ -18,7 +18,6 @@
 #define NONE 0
 #define BCK -1
 
-
 // Line following configuration variables
 const int threshold = 700;
 int line_left = 1000;
@@ -35,7 +34,6 @@ float pose_x = 0., pose_y = 0., pose_theta = 0.;
 float dest_pose_x = 0., dest_pose_y = 0., dest_pose_theta = 0.;
 float d_err = 0., b_err = 0., h_err = 0.; // Distance error (m), bearing error (rad), heading error (rad)
 float phi_l = 0., phi_r = 0.; // Wheel rotation (radians)
-
 
 // Wheel rotation vars
 float left_speed_pct = 0.;
@@ -67,10 +65,8 @@ void setup() {
   right_wheel_rotating = NONE;
 
   // Set test cases here!
-  set_pose_destination(0.15,0.05, to_radians(135));  // Goal_X_Meters, Goal_Y_Meters, Goal_Theta_Radians
-  set_pose_destination(-0.15,0.05, to_radians(45));
-  set_pose_destination(-0.15,-0.05, to_radians(225));
-  set_pose_destination(0.15,-0.05, to_radians(315));
+  //set_pose_destination(0.15, 0.05, to_radians(45));  // Goal_X_Meters, Goal_Y_Meters, Goal_theta_Radians
+  set_pose_destination(0.2, 0.0, to_radians(45));
 }
 
 // Sets target robot pose to (x,y,t) in units of meters (x,y) and radians (t)
@@ -89,28 +85,37 @@ void readSensors() {
   line_center = sparki.lineCenter();
 }
 
-
 void updateOdometry() {
   // Update pose_x, pose_y, and pose_theta
   float sparki_speed = 0.0027906976744; // cm/ms
   float radius = 100 * AXLE_DIAMETER / 2; // cm
-  if (moving_state == MOVING_FORWARD) {
-    pose_x = pose_x + sparki_speed * CYCLE_TIME * cos(pose_theta);
-    pose_y = pose_y + sparki_speed * CYCLE_TIME * sin(pose_theta);
-  }
-  else if (moving_state == MOVING_LEFT) {
-    pose_theta = pose_theta + (sparki_speed / radius) * CYCLE_TIME;
-  }
-  else if (moving_state == MOVING_RIGHT) {
-    pose_theta = pose_theta - (sparki_speed / radius) * CYCLE_TIME;
-  }
+  
+  float speed_x = cos(pose_theta) * ((left_speed_pct * ROBOT_SPEED) / 2 + (right_speed_pct * ROBOT_SPEED) / 2);
+  float speed_y = sin(pose_theta) * ((left_speed_pct * ROBOT_SPEED) / 2 + (right_speed_pct * ROBOT_SPEED) / 2);
+  float speed_theta = (right_speed_pct * ROBOT_SPEED) / AXLE_DIAMETER - (left_speed_pct * ROBOT_SPEED) / AXLE_DIAMETER;
 
-  if (line_center < threshold && line_right < threshold && line_left < threshold)
-  {
-    pose_x = 0.0;
-    pose_y = 0.0;
-    pose_theta = 0.0;
-  }
+  pose_x = pose_x + speed_x * CYCLE_TIME;
+  pose_y = pose_y + speed_y * CYCLE_TIME;
+  pose_theta = pose_theta + speed_theta * CYCLE_TIME;
+  
+//  if (moving_state == MOVING_FORWARD) {
+//    pose_x = pose_x + sparki_speed * CYCLE_TIME * cos(pose_theta);
+//    pose_y = pose_y + sparki_speed * CYCLE_TIME * sin(pose_theta);
+//  }
+//  else if (moving_state == MOVING_LEFT) {
+//    pose_theta = pose_theta + (sparki_speed / radius) * CYCLE_TIME;
+//  }
+//  else if (moving_state == MOVING_RIGHT) {
+//    pose_theta = pose_theta - (sparki_speed / radius) * CYCLE_TIME;
+//  }
+
+
+//  if (line_center < threshold && line_right < threshold && line_left < threshold)
+//  {
+//    pose_x = 0.0;
+//    pose_y = 0.0;
+//    pose_theta = 0.0;
+//  }
 
   // Bound theta
   if (pose_theta > M_PI) pose_theta -= 2.*M_PI;
@@ -131,9 +136,9 @@ void displayOdometry() {
   sparki.print(" Tg: ");
   sparki.println(to_degrees(dest_pose_theta));
 
-  sparki.print("dX : ");
-  sparki.print(dX );
-  sparki.print("   dT: ");
+  sparki.print("dX: ");
+  sparki.print(dX);
+  sparki.print(" dT: ");
   sparki.println(dTheta);
   sparki.print("phl: "); sparki.print(phi_l); sparki.print(" phr: "); sparki.println(phi_r);
   sparki.print("p: "); sparki.print(d_err); sparki.print(" a: "); sparki.println(to_degrees(b_err));
@@ -174,8 +179,8 @@ void loop() {
       // This case should arrest control of the program's control flow (taking as long as it needs to, ignoring the 100ms loop time)
       // and move the robot to its final destination
       
-      d_err = sqrt(pow(dest_pose_x-pose_x, 2) + pow(dest_pose_y-pose_y, 2));
-      b_err = atan2(dest_pose_y-pose_y, dest_pose_x-pose_x); // atan(y/x)
+      d_err = sqrt(pow(dest_pose_x - pose_x, 2) + pow(dest_pose_y - pose_y, 2));
+      b_err = atan2(dest_pose_y - pose_y, dest_pose_x - pose_x); // atan(y/x)
       h_err = dest_pose_theta - pose_theta;
 
       if (b_err >= 0) {
@@ -194,7 +199,7 @@ void loop() {
       
       pose_x = dest_pose_x;
       pose_y = dest_pose_y;
-      pose_theta = dest_pose_theta
+      pose_theta = dest_pose_theta;
 
       delay(5000);
       
@@ -202,34 +207,55 @@ void loop() {
     case CONTROLLER_GOTO_POSITION_PART3:
       updateOdometry();
 
-      r = WHEEL_RADIUS;
-      d = AXLE_DIAMETER;
+      float r = WHEEL_RADIUS;
+      float d = AXLE_DIAMETER;
       
-      rho = sqrt(pow(x_r - x_g, 2) + pow(y_r - y_g, 2));
-      alpha = atan2(y_g - y_r, x_g - x_r) - theta_r;
-      eta = theta_g - theta_r;
-
-      x_r_prime = 0.1 * rho;
-      theta_prime = 0.1 * alpha + 0.01 * eta;
+      d_err = sqrt(pow(pose_x - dest_pose_x, 2) + pow(pose_y - dest_pose_y, 2));
+      b_err = atan2(dest_pose_y - pose_y, dest_pose_x - pose_x) - pose_theta;
+      h_err = dest_pose_theta - pose_theta;
       
-      phi_l_prime = (2*x_r_prime - theta_prime*d) / (2 * r);
-      phi_r_prime = (2*x_r_prime + theta_prime*d) / (2 * r);
-
-      left_wheel_pct;
-      right_wheel_pct;
+      float dX = 0.1 * d_err;
+      float dTheta = 0.1 * b_err + 0.01 * h_err;
       
-      if (phi_l_prime > phi_r_prime) {
-        left_wheel_pct = phi_l_prime / wheel_rotation_speed_maximum;
-        right_wheel_pct = phi_r_prime / wheel_rotation_speed_maximum;
+      phi_l = (2*dX - dTheta*d) / (2 * r);
+      phi_r = (2*dX + dTheta*d) / (2 * r);
+      
+      if (phi_l > phi_r) {
+        left_speed_pct = 1.0;
+        right_speed_pct = phi_r / phi_l;
       } else {
-        left_wheel_pct = phi_l_prime / wheel_rotation_speed_maximum;
-        right_wheel_pct = 1.0;
+        left_speed_pct = phi_l / phi_r;
+        right_speed_pct = 1.0;
       }
+
+      if ((d_err < 0.01) && (abs(h_err) < M_PI / 64)) {
+        sparki.moveStop();
+        left_speed_pct = 0.0;
+        right_speed_pct = 0.0;
+      }
+
+      if (phi_l >= 0.0) {
+        sparki.motorRotate(MOTOR_LEFT, left_dir, int(abs(left_speed_pct*100.)));
+        sparki.motorRotate(MOTOR_RIGHT, right_dir, int(abs(right_speed_pct*100.)));
+      } else {
+        sparki.motorRotate(MOTOR_LEFT, right_dir, int(abs(left_speed_pct*100.)));
+        sparki.motorRotate(MOTOR_RIGHT, left_dir, int(abs(right_speed_pct*100.)));
+      }
+
+//      if (phi_r >= 0.0) {
+//        sparki.motorRotate(MOTOR_LEFT, left_dir, int(abs(left_speed_pct*100.)));
+//        sparki.motorRotate(MOTOR_RIGHT, right_dir, int(abs(right_speed_pct*100.)));
+//      } else {
+//        sparki.motorRotate(MOTOR_LEFT, right_dir, int(abs(left_speed_pct*100.)));
+//        sparki.motorRotate(MOTOR_RIGHT, left_dir, int(abs(right_speed_pct*100.)));
+//      }
       
       // TODO: Implement solution using motorRotate and proportional feedback controller.
       // sparki.motorRotate function calls for reference:
       //      sparki.motorRotate(MOTOR_LEFT, left_dir, int(left_speed_pct*100.));
       //      sparki.motorRotate(MOTOR_RIGHT, right_dir, int(right_speed_pct*100.));
+      
+      
 
       break;
   }
