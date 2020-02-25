@@ -205,6 +205,10 @@ void loop() {
       d_err = sqrt(pow(pose_x - dest_pose_x, 2) + pow(pose_y - dest_pose_y, 2));
       b_err = atan2(dest_pose_y - pose_y, dest_pose_x - pose_x) - pose_theta;
       h_err = dest_pose_theta - pose_theta;
+      if (b_err > M_PI) b_err -= 2.*M_PI;
+      if (b_err <= -M_PI) b_err += 2.*M_PI;
+      if (h_err > M_PI) h_err -= 2.*M_PI;
+      if (h_err <= -M_PI) h_err += 2.*M_PI;
       
       float dX = 0.1 * d_err;
       float dTheta = 0.1 * b_err + 0.01 * h_err;
