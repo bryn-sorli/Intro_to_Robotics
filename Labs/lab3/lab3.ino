@@ -2,7 +2,7 @@
 #include <math.h>
 
 #define M_PI 3.14159
-#define ROBOT_SPEED 0.0275 // meters/second
+#define ROBOT_SPEED 0.0283 // meters/second
 #define CYCLE_TIME .050 // Default 50ms cycle time
 #define AXLE_DIAMETER 0.0857 // meters
 #define WHEEL_RADIUS 0.03 // meters
@@ -66,7 +66,7 @@ void setup() {
 
   // Set test cases here!
   //set_pose_destination(0.15, 0.05, to_radians(45));  // Goal_X_Meters, Goal_Y_Meters, Goal_theta_Radians
-  set_pose_destination(0.0, 0.2, to_radians(90.0));
+  set_pose_destination(0.1, 0.1, to_radians(45.0));
 }
 
 // Sets target robot pose to (x,y,t) in units of meters (x,y) and radians (t)
@@ -97,17 +97,6 @@ void updateOdometry() {
   pose_x = pose_x + speed_x * CYCLE_TIME;
   pose_y = pose_y + speed_y * CYCLE_TIME;
   pose_theta = pose_theta + speed_theta * CYCLE_TIME;
-  
-//  if (moving_state == MOVING_FORWARD) {
-//    pose_x = pose_x + sparki_speed * CYCLE_TIME * cos(pose_theta);
-//    pose_y = pose_y + sparki_speed * CYCLE_TIME * sin(pose_theta);
-//  }
-//  else if (moving_state == MOVING_LEFT) {
-//    pose_theta = pose_theta + (sparki_speed / radius) * CYCLE_TIME;
-//  }
-//  else if (moving_state == MOVING_RIGHT) {
-//    pose_theta = pose_theta - (sparki_speed / radius) * CYCLE_TIME;
-//  }
 
   // Bound theta
   if (pose_theta > M_PI) pose_theta -= 2.*M_PI;
@@ -209,7 +198,7 @@ void loop() {
       if (b_err <= -M_PI) b_err += 2.*M_PI;
       if (h_err > M_PI) h_err -= 2.*M_PI;
       if (h_err <= -M_PI) h_err += 2.*M_PI;
-      
+
       float dX = 0.1 * d_err;
       float dTheta = 0.1 * b_err + 0.01 * h_err;
       
