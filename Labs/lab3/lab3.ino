@@ -66,7 +66,7 @@ void setup() {
 
   // Set test cases here!
   //set_pose_destination(0.15, 0.05, to_radians(45));  // Goal_X_Meters, Goal_Y_Meters, Goal_theta_Radians
-  set_pose_destination(0.2, 0.0, to_radians(45));
+  set_pose_destination(0.0, 0.2, to_radians(90.0));
 }
 
 // Sets target robot pose to (x,y,t) in units of meters (x,y) and radians (t)
@@ -107,14 +107,6 @@ void updateOdometry() {
 //  }
 //  else if (moving_state == MOVING_RIGHT) {
 //    pose_theta = pose_theta - (sparki_speed / radius) * CYCLE_TIME;
-//  }
-
-
-//  if (line_center < threshold && line_right < threshold && line_left < threshold)
-//  {
-//    pose_x = 0.0;
-//    pose_y = 0.0;
-//    pose_theta = 0.0;
 //  }
 
   // Bound theta
@@ -233,29 +225,25 @@ void loop() {
         left_speed_pct = 0.0;
         right_speed_pct = 0.0;
       }
-
-      if (phi_l >= 0.0) {
-        sparki.motorRotate(MOTOR_LEFT, left_dir, int(abs(left_speed_pct*100.)));
-        sparki.motorRotate(MOTOR_RIGHT, right_dir, int(abs(right_speed_pct*100.)));
-      } else {
-        sparki.motorRotate(MOTOR_LEFT, right_dir, int(abs(left_speed_pct*100.)));
-        sparki.motorRotate(MOTOR_RIGHT, left_dir, int(abs(right_speed_pct*100.)));
-      }
-
-//      if (phi_r >= 0.0) {
-//        sparki.motorRotate(MOTOR_LEFT, left_dir, int(abs(left_speed_pct*100.)));
-//        sparki.motorRotate(MOTOR_RIGHT, right_dir, int(abs(right_speed_pct*100.)));
-//      } else {
-//        sparki.motorRotate(MOTOR_LEFT, right_dir, int(abs(left_speed_pct*100.)));
-//        sparki.motorRotate(MOTOR_RIGHT, left_dir, int(abs(right_speed_pct*100.)));
-//      }
       
       // TODO: Implement solution using motorRotate and proportional feedback controller.
       // sparki.motorRotate function calls for reference:
       //      sparki.motorRotate(MOTOR_LEFT, left_dir, int(left_speed_pct*100.));
       //      sparki.motorRotate(MOTOR_RIGHT, right_dir, int(right_speed_pct*100.));
-      
-      
+
+      if (phi_l >= 0.0) {
+        left_dir = DIR_CCW;
+      } else {
+        left_dir = DIR_CW;
+      }
+      if (phi_r >= 0.0) {
+        right_dir = DIR_CW;
+      } else {
+        right_dir = DIR_CCW;
+      }
+
+      sparki.motorRotate(MOTOR_LEFT, left_dir, int(abs(left_speed_pct*100.)));
+      sparki.motorRotate(MOTOR_RIGHT, right_dir, int(abs(right_speed_pct*100.)));
 
       break;
   }
