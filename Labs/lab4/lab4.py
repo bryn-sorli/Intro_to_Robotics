@@ -22,13 +22,14 @@ publisher_ping = None
 publisher_servo = None
 subscriber_odometry = None
 subscriber_state = None
+publisher_render = None
 
 # CONSTANTS 
 IR_THRESHOLD = 300 # IR sensor threshold for detecting black track. Change as necessary.
 CYCLE_TIME = 0.1 # In seconds
 
 def main():
-    global publisher_motor, publisher_ping, publisher_servo, publisher_odom
+    global publisher_motor, publisher_ping, publisher_servo, publisher_odom, publisher_render
     global IR_THRESHOLD, CYCLE_TIME
     global pose2d_sparki_odometry
 
@@ -38,11 +39,21 @@ def main():
     while not rospy.is_shutdown():
         #TODO: Implement CYCLE TIME
         starting_time = time.time()
-        print("hey")
 
         #TODO: Implement line following code here
         #      To create a message for changing motor speed, use Float32MultiArray()
         #      (e.g., msg = Float32MultiArray()     msg.data = [1.0,1.0]      publisher.pub(msg))
+        motor_movement = Float32MultiArray()
+        if IR_sensors[2] < IR_THRESHOLD:
+            motor_movement.data = [1.0, 1.0]
+        elif IR_sensors[1] < IR_THRESHOLD: # move left
+            motor_movement.data = [-1.0, 1.0]
+        elif IR_sensors[3] < IR_THRESHOLD: # move right
+            motor_movement.data = [1.0, -1.0]
+        else:
+            motor_movement.data = [0.0, 0.0]
+        publisher_motor.publish(motor_movement)
+        publisher_render.publish(Empty())
 
         #TODO: Implement loop closure here
         if False:
@@ -52,20 +63,24 @@ def main():
         difference_time = time.time() - starting_time
         rospy.sleep(CYCLE_TIME - difference_time)
 
-
-
 def init():
-    global publisher_motor, publisher_ping, publisher_servo, publisher_odom
+    global publisher_motor, publisher_ping, publisher_servo, publisher_odom, publisher_render
     global subscriber_odometry, subscriber_state
     global pose2d_sparki_odometry
 
     #TODO: Set up your publishers and subscribers
     rospy.init_node("lab4")
-    pub = rospy.Publisher("updateOdometry", Pose2D, queue_size=10)
-    pub2 = rospy.Publisher("updateState", String, queue_size=10)
-    sub = rospy.Subscriber("updateOdometry", Pose2D, callback_update_odometry)
-    sub2 = rospy.Subscriber("updateState", String, callback_update_state)
-    # rospy.sleep(5)
+
+    publisher_motor = rospy.Publisher("/sparki/motor_command", Float32MultiArray, queue_size=10)
+    publisher_ping = rospy.Publisher("/sparki/ping_command", Empty, queue_size=10)
+    publisher_servo = rospy.Publisher("/sparki/set_servo", Int16, queue_size=10)
+    publisher_odom = rospy.Publisher("/sparki/set_odometry", Pose2D, queue_size=10)
+    publisher_render = rospy.Publisher("/sparki/render_sim", Empty, queue_size=10)
+
+    subscriber_odometry = rospy.Subscriber("/sparki/odometry", Pose2D, callback_update_odometry)
+    subscriber_state = rospy.Subscriber("/sparki/state", String, callback_update_state)
+    
+    rospy.sleep(1)
     # pub2.publish(json.dumps({'test': 1}))
     # rospy.spin()
 
@@ -73,18 +88,20 @@ def init():
     pose2d_sparki_odometry = Pose2D()
 
     #TODO: Set sparki's servo to an angle pointing inward to the map (e.g., 45)
-    servo_angle = 45
+    publisher_servo.publish(45)
 
 def callback_update_odometry(data):
     # Receives geometry_msgs/Pose2D message
     global pose2d_sparki_odometry
     #TODO: Copy this data into your local odometry variable
-    pose2d_sparki_odometry = data.data
+    pose2d_sparki_odometry = data
 
 def callback_update_state(data):
     state_dict = json.loads(data.data) # Creates a dictionary object from the JSON string received from the state topic
     #TODO: Load data into your program's local state variables
-    print(state_dict)
+    global IR_sensors, servo_angle
+    IR_sensors = state_dict["light_sensors"]
+    servo_angle = state_dict["servo"]
 
 def convert_ultrasonic_to_robot_coords(x_us):
     #TODO: Using US sensor reading and servo angle, return value in robot-centric coordinates
