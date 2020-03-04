@@ -9,8 +9,11 @@ from std_msgs.msg import Float32MultiArray, Empty, String, Int16
 # GLOBALS 
 pose2d_sparki_odometry = None #Pose2D message object, contains x,y,theta members in meters and radians
 #TODO: Track servo angle in radians
+servo_angle = 0
 #TODO: Track IR sensor readings (there are five readings in the array: we've been using indices 1,2,3 for left/center/right)
+IR_sensors = None
 #TODO: Create data structure to hold map representation
+map_sub = None
 
 # TODO: Use these variables to hold your publishers and subscribers
 publisher_motor = None
@@ -34,6 +37,8 @@ def main():
 
     while not rospy.is_shutdown():
         #TODO: Implement CYCLE TIME
+        starting_time = time.time()
+        print("hey")
 
         #TODO: Implement line following code here
         #      To create a message for changing motor speed, use Float32MultiArray()
@@ -44,7 +49,8 @@ def main():
             rospy.loginfo("Loop Closure Triggered")
 
         #TODO: Implement CYCLE TIME
-        rospy.sleep(0)
+        difference_time = time.time() - starting_time
+        rospy.sleep(CYCLE_TIME - difference_time)
 
 
 
@@ -52,18 +58,33 @@ def init():
     global publisher_motor, publisher_ping, publisher_servo, publisher_odom
     global subscriber_odometry, subscriber_state
     global pose2d_sparki_odometry
+
     #TODO: Set up your publishers and subscribers
+    rospy.init_node("lab4")
+    pub = rospy.Publisher("updateOdometry", Pose2D, queue_size=10)
+    pub2 = rospy.Publisher("updateState", String, queue_size=10)
+    sub = rospy.Subscriber("updateOdometry", Pose2D, callback_update_odometry)
+    sub2 = rospy.Subscriber("updateState", String, callback_update_state)
+    # rospy.sleep(5)
+    # pub2.publish(json.dumps({'test': 1}))
+    # rospy.spin()
+
     #TODO: Set up your initial odometry pose (pose2d_sparki_odometry) as a new Pose2D message object
+    pose2d_sparki_odometry = Pose2D()
+
     #TODO: Set sparki's servo to an angle pointing inward to the map (e.g., 45)
+    servo_angle = 45
 
 def callback_update_odometry(data):
     # Receives geometry_msgs/Pose2D message
     global pose2d_sparki_odometry
     #TODO: Copy this data into your local odometry variable
+    pose2d_sparki_odometry = data.data
 
 def callback_update_state(data):
     state_dict = json.loads(data.data) # Creates a dictionary object from the JSON string received from the state topic
     #TODO: Load data into your program's local state variables
+    print(state_dict)
 
 def convert_ultrasonic_to_robot_coords(x_us):
     #TODO: Using US sensor reading and servo angle, return value in robot-centric coordinates
