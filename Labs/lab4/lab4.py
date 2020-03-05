@@ -26,7 +26,7 @@ publisher_render = None
 
 # CONSTANTS 
 IR_THRESHOLD = 300 # IR sensor threshold for detecting black track. Change as necessary.
-CYCLE_TIME = 0.1 # In seconds
+CYCLE_TIME = 0.05 # In seconds
 
 def main():
     global publisher_motor, publisher_ping, publisher_servo, publisher_odom, publisher_render
@@ -37,12 +37,12 @@ def main():
     init()
 
     while not rospy.is_shutdown():
-        #TODO: Implement CYCLE TIME
+        # Implement cycle time
         starting_time = time.time()
 
-        #TODO: Implement line following code here
-        #      To create a message for changing motor speed, use Float32MultiArray()
-        #      (e.g., msg = Float32MultiArray()     msg.data = [1.0,1.0]      publisher.pub(msg))
+        # Line following
+        #   To create a message for changing motor speed, use Float32MultiArray()
+        #   (e.g., msg = Float32MultiArray()     msg.data = [1.0,1.0]      publisher.pub(msg))
         motor_movement = Float32MultiArray()
         if IR_sensors[2] < IR_THRESHOLD:
             motor_movement.data = [1.0, 1.0]
@@ -55,11 +55,17 @@ def main():
         publisher_motor.publish(motor_movement)
         publisher_render.publish(Empty())
 
-        #TODO: Implement loop closure here
-        if False:
+        # Loop closure
+        if IR_sensors[1] < IR_THRESHOLD and IR_sensors[2] < IR_THRESHOLD and IR_sensors[3] < IR_THRESHOLD:
             rospy.loginfo("Loop Closure Triggered")
+            new_pose = Pose2D()
+            new_pose.x, new_pose.y, new_pose.theta = 0, 0, pose2d_sparki_odometry.theta
+            publisher_odom.publish()
 
-        #TODO: Implement CYCLE TIME
+        # Publish ping to get the ultrasonic sensor data
+        publisher_ping.publish(Empty())
+
+        # Implement cycle time
         difference_time = time.time() - starting_time
         rospy.sleep(CYCLE_TIME - difference_time)
 
@@ -68,7 +74,7 @@ def init():
     global subscriber_odometry, subscriber_state
     global pose2d_sparki_odometry
 
-    #TODO: Set up your publishers and subscribers
+    # Set up publishers and subscribers
     rospy.init_node("lab4")
 
     publisher_motor = rospy.Publisher("/sparki/motor_command", Float32MultiArray, queue_size=10)
@@ -79,44 +85,47 @@ def init():
 
     subscriber_odometry = rospy.Subscriber("/sparki/odometry", Pose2D, callback_update_odometry)
     subscriber_state = rospy.Subscriber("/sparki/state", String, callback_update_state)
-    
+
     rospy.sleep(1)
-    # pub2.publish(json.dumps({'test': 1}))
     # rospy.spin()
 
-    #TODO: Set up your initial odometry pose (pose2d_sparki_odometry) as a new Pose2D message object
+    # Set up initial odometry pose (pose2d_sparki_odometry) as a new Pose2D message object
     pose2d_sparki_odometry = Pose2D()
 
-    #TODO: Set sparki's servo to an angle pointing inward to the map (e.g., 45)
+    # Set sparki's servo to an angle pointing inward to the map (e.g., 45)
     publisher_servo.publish(45)
 
 def callback_update_odometry(data):
     # Receives geometry_msgs/Pose2D message
     global pose2d_sparki_odometry
-    #TODO: Copy this data into your local odometry variable
+    # Copy data into local odometry variable
     pose2d_sparki_odometry = data
 
 def callback_update_state(data):
     state_dict = json.loads(data.data) # Creates a dictionary object from the JSON string received from the state topic
-    #TODO: Load data into your program's local state variables
+    # Load data into program's state variables
     global IR_sensors, servo_angle
+
     IR_sensors = state_dict["light_sensors"]
     servo_angle = state_dict["servo"]
+    if "ping" in state_dict:
+        # Populate map from ping by converting ultrasonic coords to robot coords to world coords lol
+        populate_map_from_ping(convert_robot_coords_to_world(convert_ultrasonic_to_robot_coords(state_dict["ping"])))
 
 def convert_ultrasonic_to_robot_coords(x_us):
     #TODO: Using US sensor reading and servo angle, return value in robot-centric coordinates
-    x_r, y_r = 0., 0.
+    x_r, y_r = x_us * math.cos(servo_angle), x_us * math.sin(servo_angle)
     return x_r, y_r
 
 def convert_robot_coords_to_world(x_r, y_r):
     #TODO: Using odometry, convert robot-centric coordinates into world coordinates
-    x_w, y_w = 0., 0.
-
+    x_w, y_w = pose2d_sparki_odometry.x + x_r, pose2d_sparki_odometry.y + y_r
     return x_w, y_w
 
 def populate_map_from_ping(x_ping, y_ping):
     #TODO: Given world coordinates of an object detected via ping, fill in the corresponding part of the map
-    pass
+    global map_sub
+    return
 
 def display_map():
     #TODO: Display the map
@@ -130,12 +139,9 @@ def cell_index_to_ij(cell_index):
     #TODO: Convert from cell_index to (i,j) coordinates
     return 0, 0
 
-
 def cost(cell_index_from, cell_index_to):
     #TODO: Return cost of traversing from one cell to another
     return 0
 
 if __name__ == "__main__":
     main()
-
-
