@@ -14,6 +14,9 @@ servo_angle = 0
 IR_sensors = None
 #TODO: Create data structure to hold map representation
 map_sub = None
+height = 42
+width = 60
+max_distance = math.sqrt(height**2 + width**2)
 
 # TODO: Use these variables to hold your publishers and subscribers
 publisher_motor = None
@@ -133,15 +136,24 @@ def display_map():
 
 def ij_to_cell_index(i,j):
     #TODO: Convert from i,j coordinates to a single integer that identifies a grid cell
-    return 0
+    global width
+    return (width*j + i)
 
 def cell_index_to_ij(cell_index):
     #TODO: Convert from cell_index to (i,j) coordinates
-    return 0, 0
+    global width
+    return (cell_index//width, cell_index%width)
 
 def cost(cell_index_from, cell_index_to):
     #TODO: Return cost of traversing from one cell to another
-    return 0
+    global max_distance
+    goal =  cell_index_to_ij(cell_index_to)
+	position = cell_index_to_ij(cell_index_from) 
+    t_cost = math.sqrt(goal**2 + position**2)
+
+    t_cost = t_cost*100
+
+    return t_cost
 
 if __name__ == "__main__":
     main()
