@@ -4,9 +4,12 @@ import copy
 import time
 import math
 import sys
+import csv
 from geometry_msgs.msg import Pose2D
 from std_msgs.msg import Float32MultiArray, Empty, String, Int16
 
+# csvFile = open("object_coords.csv", "w")
+# csvWriter = csv.writer(csvFile)
 
 # GLOBALS 
 pose2d_sparki_odometry = None #Pose2D message object, contains x,y,theta members in meters and radians
@@ -15,7 +18,7 @@ servo_angle = 0
 #TODO: Track IR sensor readings (there are five readings in the array: we've been using indices 1,2,3 for left/center/right)
 IR_sensors = None
 #TODO: Create data structure to hold map representation
-map_sub = array_ab = [ [ 0 for _ in range(60 / 2) ] for _ in range(42 / 2) ]
+map_sub = array_ab = [ [ 0 for _ in range(60) ] for _ in range(42) ]
 height = 42
 width = 60
 max_distance = math.sqrt(height**2 + width**2)
@@ -35,7 +38,7 @@ CYCLE_TIME = 0.05 # In seconds
 MAP_RESOLUTION = 0.0015 # meters per pixel
 MAP_SIZE_X = 1200 # Default map size in pixels
 MAP_SIZE_Y = 800 # Default map size in pixels
-CELL_RESOLUTION = 0.5 # centimeters per centimeter
+CELL_RESOLUTION = 1.0 # centimeters per centimeter
 CELL_SIZE_X = 60
 CELL_SIZE_Y = 42
 
@@ -138,17 +141,19 @@ def convert_ultrasonic_to_robot_coords(x_us):
 
 def convert_robot_coords_to_world(x_r, y_r):
     # Using odometry, convert robot coordinates into world coordinates
-    x_w, y_w = pose2d_sparki_odometry.x + x_r, pose2d_sparki_odometry.y + y_r
+    # x_w, y_w = pose2d_sparki_odometry.x + x_r, pose2d_sparki_odometry.y + y_r
+    x_w = x_r * math.cos(pose2d_sparki_odometry.theta) - y_r * math.sin(pose2d_sparki_odometry.theta) + pose2d_sparki_odometry.x
+    y_w = x_r * math.sin(pose2d_sparki_odometry.theta) + y_r * math.cos(pose2d_sparki_odometry.theta) + pose2d_sparki_odometry.y
     return x_w, y_w
 
 def populate_map_from_ping(x_ping, y_ping):
     #TODO: Given world coordinates of an object detected via ping, fill in the corresponding part of the map
     global map_sub
+    csvWriter.writerow([x_ping, y_ping])
     i, j = xy_to_ij(x_ping, y_ping)
     x, y = ij_to_xy(i, j)
-    print(i, j, "-->", x, y)
-    map_sub[j][i] = 1
-    display_map()
+    # print(i, j, "-->", x, y)
+    map_sub[int(math.ceil(CELL_RESOLUTION * CELL_SIZE_Y))-j][i] = 1
     return
 
 def xy_to_ij(x, y):
@@ -165,16 +170,20 @@ def ij_to_xy(i, j):
 
 def display_map():
     # Display the map
+    print("Map:")
+    print("+" + "-" * 2 * CELL_SIZE_X + "+")
+    sparki_i, sparki_j = xy_to_ij(pose2d_sparki_odometry.x, pose2d_sparki_odometry.y)
     for j in range(int(CELL_RESOLUTION * CELL_SIZE_Y)):
+        sys.stdout.write("|")
         for i in range(int(CELL_RESOLUTION * CELL_SIZE_X)):
-            sparki_i, sparki_j = xy_to_ij(pose2d_sparki_odometry.x, pose2d_sparki_odometry.y)
-            if i == sparki_i and j == sparki_j:
-                sys.stdout.write("O")
-            if map_sub[j][i] == 1:
-                sys.stdout.write("X")
+            if i == sparki_i and int(math.ceil(CELL_RESOLUTION * CELL_SIZE_Y))-j == sparki_j:
+                sys.stdout.write("O ")
+            elif map_sub[j][i] == 1:
+                sys.stdout.write("XX")
             else:
-                sys.stdout.write(" ")
-        sys.stdout.write("\n")
+                sys.stdout.write(". ")
+        sys.stdout.write("|\n")
+    print("+" + "-" * 2 * CELL_SIZE_X + "+")
     pass
 
 def ij_to_cell_index(i,j):
@@ -189,12 +198,18 @@ def cell_index_to_ij(cell_index):
 
 def cost(cell_index_from, cell_index_to):
     #TODO: Return cost of traversing from one cell to another
-    global max_distance
-    goal =  cell_index_to_ij(cell_index_to)
-	position = cell_index_to_ij(cell_index_from) 
-    t_cost = math.sqrt(goal**2 + position**2)
-
-    t_cost = t_cost*100
+    from_i, from_j = cell_index_to_ij(cell_index_from)
+    to_i, to_j =  cell_index_to_ij(cell_index_to)
+    
+    if to_i == from_i or to_j == from_j:
+        # Adjacent
+        if map_sub[to_j][to_i] == 0:
+            # Unoccupied
+            t_cost = 1
+        else:
+            t_cost = 99
+    else:
+        t_cost = 99
 
     return t_cost
 
