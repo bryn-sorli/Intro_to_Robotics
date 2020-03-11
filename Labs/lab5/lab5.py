@@ -124,8 +124,25 @@ def get_travel_cost(vertex_source, vertex_dest):
         vertex_dest corresponds to (i,j) coordinates outside the map
         vertex_source and vertex_dest are not adjacent to each other (i.e., more than 1 move away from each other)
   '''
+  global g_WORLD_MAP
 
-  return 100
+  # source_i, source_j = vertex_index_to_ij(vertex_source)
+  # dest_i, dest_j =  vertex_index_to_ij(vertex_dest)
+
+  if vertex_source >= g_NUM_Y_CELLS*g_NUM_X_CELLS or vertex_source < 0 or vertex_dest >= g_NUM_Y_CELLS*g_NUM_X_CELLS or vertex_dest < 0:
+    return 1000
+
+  if vertex_source == vertex_dest - 1 or vertex_source == vertex_dest + 1 or vertex_source == vertex_dest - g_NUM_X_CELLS or vertex_source == vertex_dest + g_NUM_X_CELLS:
+    # Adjacent
+    if g_WORLD_MAP[vertex_source] != 1 and g_WORLD_MAP[vertex_dest] != 1:
+      # Unoccupied
+      cost = 1
+    else:
+      cost = 1000
+  else:
+  	cost = 1000
+
+  return cost
 
 
 def run_dijkstra(source_vertex):
@@ -140,16 +157,28 @@ def run_dijkstra(source_vertex):
   global g_NUM_X_CELLS, g_NUM_Y_CELLS
 
   # Array mapping vertex_index to distance of shortest path from vertex_index to source_vertex.
-  dist = [0] * g_NUM_X_CELLS * g_NUM_Y_CELLS
+  dist = [math.inf] * g_NUM_X_CELLS * g_NUM_Y_CELLS
 
   # Queue for identifying which vertices are up to still be explored:
   # Will contain tuples of (vertex_index, cost), sorted such that the min cost is first to be extracted (explore cheapest/most promising vertices first)
-  Q_cost = []
+  Q_cost = sorted([(i, get_travel_cost(source_vertex, i)) for i in range(g_NUM_X_CELLS * g_NUM_Y_CELLS)], key=lambda u: u[1])
 
   # Array of ints for storing the next step (vertex_index) on the shortest path back to source_vertex for each vertex in the graph
   prev = [-1] * g_NUM_X_CELLS*g_NUM_Y_CELLS
 
   # Insert your Dijkstra's code here. Don't forget to initialize Q_cost properly!
+  while not Q_cost:
+    u, c = Q_cost.pop(0)
+    neighbors = [u - 1, u + 1, u - g_NUM_X_CELLS, u + g_NUM_X_CELLS]
+    for v in neighbors:
+      if v < g_NUM_Y_CELLS*g_NUM_X_CELLS or v >= 0 or v < g_NUM_Y_CELLS*g_NUM_X_CELLS or v >= 0:
+        alt = dist[u] + 1
+        if alt < dist[v]:
+          dist[v] = alt
+          prev[v] = u
+          for i in range(len(Q_cost)):
+            if Q_cost[i][0] == u:
+              Q_cost[i][1] = alt
 
   # Return results of algorithm run
   return prev
