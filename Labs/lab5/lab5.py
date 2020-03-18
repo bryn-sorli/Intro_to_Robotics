@@ -226,8 +226,15 @@ def reconstruct_path(prev, source_vertex, dest_vertex):
   final_path = []
 
   # TODO: Insert your code here
+  final_path.append(dest_vertex)
+  curr_vertex = dest_vertex
 
-
+  while curr_vertex != source_vertex:
+    if prev[curr_vertex] < 0:
+      print('There is probably not a path')
+      return []
+    final_path.insert(0, prev[curr_vertex])
+    curr_vertex = prev[curr_vertex]
   return final_path
 
 
