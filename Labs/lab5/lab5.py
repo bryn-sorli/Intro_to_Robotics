@@ -126,23 +126,40 @@ def get_travel_cost(vertex_source, vertex_dest):
   '''
   global g_WORLD_MAP
 
-  # source_i, source_j = vertex_index_to_ij(vertex_source)
-  # dest_i, dest_j =  vertex_index_to_ij(vertex_dest)
-
-  if vertex_source >= g_NUM_Y_CELLS*g_NUM_X_CELLS or vertex_source < 0 or vertex_dest >= g_NUM_Y_CELLS*g_NUM_X_CELLS or vertex_dest < 0:
+  # Source is out of bounds
+  if vertex_source < 0 or vertex_source >= g_NUM_Y_CELLS * g_NUM_X_CELLS:
     return 1000
 
-  if vertex_source == vertex_dest - 1 or vertex_source == vertex_dest + 1 or vertex_source == vertex_dest - g_NUM_X_CELLS or vertex_source == vertex_dest + g_NUM_X_CELLS:
-    # Adjacent
-    if g_WORLD_MAP[vertex_source] != 1 and g_WORLD_MAP[vertex_dest] != 1:
-      # Unoccupied
-      cost = 1
-    else:
-      cost = 1000
-  else:
-  	cost = 1000
+  # Destination is out of bounds
+  if vertex_dest < 0 or vertex_dest >= g_NUM_Y_CELLS * g_NUM_X_CELLS:
+    return 1000
 
-  return cost
+  # Source and destination are unoccupied
+  if g_WORLD_MAP[vertex_source] != 1 and g_WORLD_MAP[vertex_dest] != 1:
+    # Adjacent
+    source_i, source_j = vertex_index_to_ij(vertex_source)
+    dest_i, dest_j =  vertex_index_to_ij(vertex_dest)
+    if (source_i == dest_i and abs(source_j - dest_j) == 1) or (source_j == dest_j and abs(source_i - dest_i) == 1):
+      return 1
+    else:
+      return 1000
+  else:
+    return 1000
+
+  # if vertex_source >= g_NUM_Y_CELLS*g_NUM_X_CELLS or vertex_source < 0 or vertex_dest >= g_NUM_Y_CELLS*g_NUM_X_CELLS or vertex_dest < 0:
+  #   return 1000
+
+  # if vertex_source == vertex_dest - 1 or vertex_source == vertex_dest + 1 or vertex_source == vertex_dest - g_NUM_X_CELLS or vertex_source == vertex_dest + g_NUM_X_CELLS:
+  #   # Adjacent
+  #   if g_WORLD_MAP[vertex_source] != 1 and g_WORLD_MAP[vertex_dest] != 1:
+  #     # Unoccupied
+  #     cost = 1
+  #   else:
+  #     cost = 1000
+  # else:
+  # 	cost = 1000
+
+  # return cost
 
 
 def run_dijkstra(source_vertex):
@@ -157,28 +174,42 @@ def run_dijkstra(source_vertex):
   global g_NUM_X_CELLS, g_NUM_Y_CELLS
 
   # Array mapping vertex_index to distance of shortest path from vertex_index to source_vertex.
-  dist = [math.inf] * g_NUM_X_CELLS * g_NUM_Y_CELLS
+  dist = [1000] * g_NUM_X_CELLS * g_NUM_Y_CELLS
+  dist[source_vertex] = 0
 
   # Queue for identifying which vertices are up to still be explored:
   # Will contain tuples of (vertex_index, cost), sorted such that the min cost is first to be extracted (explore cheapest/most promising vertices first)
-  Q_cost = sorted([(i, get_travel_cost(source_vertex, i)) for i in range(g_NUM_X_CELLS * g_NUM_Y_CELLS)], key=lambda u: u[1])
+  # Q_cost = [(i, dist[i]) for i in range(g_NUM_X_CELLS * g_NUM_Y_CELLS)]
+  Q_cost = [(source_vertex, 0)]
+  # for i in range(g_NUM_X_CELLS * g_NUM_Y_CELLS):
+  #   if i == source_vertex:
+  #     Q_cost.append((i, 0))
+  #   if i != source_vertex:
+  #     # Q_cost.append((i, get_travel_cost(source_vertex, i)))
+  #     Q_cost.append((i, dist[i])
+  # Q_cost = sorted(Q_cost, key=lambda u: u[1])
 
   # Array of ints for storing the next step (vertex_index) on the shortest path back to source_vertex for each vertex in the graph
   prev = [-1] * g_NUM_X_CELLS*g_NUM_Y_CELLS
 
   # Insert your Dijkstra's code here. Don't forget to initialize Q_cost properly!
-  while not Q_cost:
+  while Q_cost:
     u, c = Q_cost.pop(0)
+    # print(u,  c)
     neighbors = [u - 1, u + 1, u - g_NUM_X_CELLS, u + g_NUM_X_CELLS]
     for v in neighbors:
-      if v < g_NUM_Y_CELLS*g_NUM_X_CELLS or v >= 0 or v < g_NUM_Y_CELLS*g_NUM_X_CELLS or v >= 0:
-        alt = dist[u] + 1
+      if v < g_NUM_Y_CELLS*g_NUM_X_CELLS and v >= 0 and v < g_NUM_Y_CELLS*g_NUM_X_CELLS and v >= 0:
+        alt = dist[u] + get_travel_cost(u, v)
+        # print("comparing cell ", u, " and ", v)
         if alt < dist[v]:
+          # print("found better cost")
           dist[v] = alt
           prev[v] = u
-          for i in range(len(Q_cost)):
-            if Q_cost[i][0] == u:
-              Q_cost[i][1] = alt
+          Q_cost.append((v, alt))
+          Q_cost = sorted(Q_cost, key=lambda u: u[1])
+          # for i in range(len(Q_cost)):
+          #   if Q_cost[i][0] == u:
+          #     Q_cost[i][1] = alt
 
   # Return results of algorithm run
   return prev
@@ -223,6 +254,16 @@ def render_map(map_array):
     Make sure to display your map so that I,J coordinate (0,0) is in the bottom left.
     (To do this, you'll probably want to iterate from row 'J-1' to '0')
   '''
+  print(map_array)
+  map_string = ""
+  for j in range(g_NUM_Y_CELLS):
+    for i in range(g_NUM_X_CELLS):
+      if map_array[g_NUM_Y_CELLS * (g_NUM_Y_CELLS-1-j) + i] == 0:
+        map_string += " . "
+      else:
+        map_string += "[ ]"
+    map_string += "\n"
+  print(map_string)
   pass
 
 
@@ -230,11 +271,18 @@ def part_1():
   global g_WORLD_MAP
 
   # TODO: Initialize a grid map to use for your test -- you may use create_test_map for this, or manually set one up with obstacles
-
+  g_WORLD_MAP = create_test_map(g_WORLD_MAP)
+  # g_WORLD_MAP = [0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0]
 
   # Use render_map to render your initialized obstacle map
+  render_map(g_WORLD_MAP)
 
   # TODO: Find a path from the (I,J) coordinate pair in g_src_coordinates to the one in g_dest_coordinates using run_dijkstra and reconstruct_path
+  source_vertex = g_src_coordinates[0] * g_NUM_X_CELLS + g_src_coordinates[1] * g_NUM_Y_CELLS
+  prev = run_dijkstra(source_vertex)
+  for i in range(g_NUM_Y_CELLS):
+    print(prev[(g_NUM_Y_CELLS-1-i)*g_NUM_X_CELLS:(g_NUM_Y_CELLS-1-i)*g_NUM_X_CELLS+4])
+  # reconstruct_path(prev, g_src_coordinates, g_dest_coordinates)
 
   '''
   TODO-
