@@ -6,7 +6,7 @@ import copy
 import math
 import random
 import argparse
-from PIL import Image
+from PIL import Image, ImageDraw
 import numpy as np
 from pprint import pprint
 
@@ -18,9 +18,13 @@ MAP_SIZE_Y = None
 
 # Default parameters will create a 4x4 grid to test with
 g_MAP_SIZE_X = 2. # 2m wide
+# g_MAP_SIZE_X = 1.8 # 2m wide
 g_MAP_SIZE_Y = 1.5 # 1.5m tall
+# g_MAP_SIZE_Y = 1.2 # 1.5m tall
 g_MAP_RESOLUTION_X = 0.5 # Each col represents 50cm
+# g_MAP_RESOLUTION_X = 0.05625 # Each col represents 6.25cm
 g_MAP_RESOLUTION_Y = 0.375 # Each row represents 37.5cm
+# g_MAP_RESOLUTION_Y = 0.0375 # Each row represents 4.6875cm
 g_NUM_X_CELLS = int(g_MAP_SIZE_X // g_MAP_RESOLUTION_X) # Number of columns in the grid map
 g_NUM_Y_CELLS = int(g_MAP_SIZE_Y // g_MAP_RESOLUTION_Y) # Number of rows in the grid map
 
@@ -28,7 +32,7 @@ g_NUM_Y_CELLS = int(g_MAP_SIZE_Y // g_MAP_RESOLUTION_Y) # Number of rows in the 
 g_WORLD_MAP = [0] * g_NUM_Y_CELLS*g_NUM_X_CELLS # Initialize graph (grid) as array
 
 # Source and Destination (I,J) grid coordinates
-g_dest_coordinates = (3,3)
+g_dest_coordinates = (3,1)
 g_src_coordinates = (0,0)
 
 
@@ -106,7 +110,7 @@ def xy_coordinates_to_ij_coordinates(x,y):
   returns (X, Y) coordinates in meters at the center of grid cell (i,j)
   '''
   global g_MAP_RESOLUTION_X, g_MAP_RESOLUTION_Y
-  return int(i // g_MAP_RESOLUTION_X), int(j // g_MAP_RESOLUTION_Y)
+  return int(x // g_MAP_RESOLUTION_X), int(y // g_MAP_RESOLUTION_Y)
 
 # **********************************
 # *      Core Dijkstra Functions   *
@@ -230,7 +234,7 @@ def reconstruct_path(prev, source_vertex, dest_vertex):
   curr_vertex = dest_vertex
 
   while curr_vertex != source_vertex:
-    if prev[curr_vertex] < 0:
+    if prev[curr_vertex] == -1:
       print('There is probably not a path')
       return []
     final_path.insert(0, prev[curr_vertex])
@@ -261,7 +265,7 @@ def render_map(map_array):
     Make sure to display your map so that I,J coordinate (0,0) is in the bottom left.
     (To do this, you'll probably want to iterate from row 'J-1' to '0')
   '''
-  print(map_array)
+
   map_string = ""
   for j in range(g_NUM_Y_CELLS):
     for i in range(g_NUM_X_CELLS):
@@ -285,11 +289,12 @@ def part_1():
   render_map(g_WORLD_MAP)
 
   # TODO: Find a path from the (I,J) coordinate pair in g_src_coordinates to the one in g_dest_coordinates using run_dijkstra and reconstruct_path
-  source_vertex = g_src_coordinates[0] * g_NUM_X_CELLS + g_src_coordinates[1] * g_NUM_Y_CELLS
-  prev = run_dijkstra(source_vertex)
+  prev = run_dijkstra(ij_to_vertex_index(*g_src_coordinates))
   for i in range(g_NUM_Y_CELLS):
     print(prev[(g_NUM_Y_CELLS-1-i)*g_NUM_X_CELLS:(g_NUM_Y_CELLS-1-i)*g_NUM_X_CELLS+4])
-  # reconstruct_path(prev, g_src_coordinates, g_dest_coordinates)
+  print("")
+
+  final_path = reconstruct_path(prev, ij_to_vertex_index(*g_src_coordinates), ij_to_vertex_index(*g_dest_coordinates))
 
   '''
   TODO-
@@ -298,6 +303,45 @@ def part_1():
     Goal: (3,1)
     0 -> 1 -> 2 -> 6 -> 7
   '''
+  print("Source: " + str(g_src_coordinates))
+  print("Goal: " + str(g_dest_coordinates))
+  print("Path: " + " -> ".join([str(p) for p in final_path]))
+
+def _draw_path_on_image(path, image_filename):
+  '''
+  Path is a list of vertices
+  image_filename is the image to be drawn on
+  '''
+
+  if image_filename is None:
+    raise Exception("Image file not found.")
+
+  img = Image.open(image_filename)
+
+  xys = []
+  for p in path:
+    x, y = ij_coordinates_to_xy_coordinates(*vertex_index_to_ij(p))
+    xys.append((x / 0.0015, (1.2 - y) / 0.0015))
+
+  draw = ImageDraw.Draw(img)
+  draw.line(xys, fill="red", width=10)
+  # x_src, y_src = g_src_coordinates
+  # y_src = 1.2 - y_src
+  # x_dest, y_dest = g_dest_coordinates
+  # y_dest = 1.2 - y_dest
+  # draw.line([(x_src / 0.0015, y_src / 0.0015), (10+x_src / 0.0015, 10+y_src / 0.0015)], fill="red", width=10)
+  # draw.line([(x_dest / 0.0015, y_dest / 0.0015), (10+x_dest / 0.0015, 10+y_dest / 0.0015)], fill="red", width=10)
+
+  img.save("image1.png", "PNG")
+  img.show()
+
+  # grid = np.zeros([img.height, img.width])
+  # for y in range(img.height):
+  #     for x in range(img.width):
+  #         pixel = img.getpixel((x,y))
+  #         grid[y,x] = 255 - pixel[0] # Dark pixels have high values to indicate being occupied/having something interesting
+
+  return
 
 
 def part_2(args):
@@ -305,12 +349,12 @@ def part_2(args):
   global g_src_coordinates
   global g_WORLD_MAP
 
-  g_src_coordinates = (args.src_coordinates[0], args.src_coordinates[1])
-  g_dest_coordinates = (args.dest_coordinates[0], args.dest_coordinates[1])
-
   # pixel_grid has intensity values for all the pixels
   # You will have to convert it to the earlier 0 and 1 matrix yourself
   pixel_grid = _load_img_to_intensity_matrix(args.obstacles)
+
+  g_src_coordinates = (float(args.src_coordinates[0]), float(args.src_coordinates[1]))
+  g_dest_coordinates = (float(args.dest_coordinates[0]), float(args.dest_coordinates[1]))
 
   '''
   TODO -
@@ -321,8 +365,28 @@ def part_2(args):
   '''
 
   #### Your code goes here ####
+  pixel_height = len(pixel_grid)
+  pixel_width = len(pixel_grid[0])
+  print(pixel_height, 1.2 / pixel_height)
+  print(pixel_width, 1.8 / pixel_width)
+  for y in range(pixel_height):
+    for x in range(pixel_width):
+      if pixel_grid[pixel_height-1-y, x] == 255.0:
+        i, j = xy_coordinates_to_ij_coordinates(0.0015 * x, 0.0015 * y)
+        vertex_index = ij_to_vertex_index(i, j)
+        g_WORLD_MAP[vertex_index] = 1
 
+  render_map(g_WORLD_MAP)
 
+  prev = run_dijkstra(ij_to_vertex_index(*xy_coordinates_to_ij_coordinates(*g_src_coordinates)))
+
+  path = reconstruct_path(prev, ij_to_vertex_index(*xy_coordinates_to_ij_coordinates(*g_src_coordinates)), ij_to_vertex_index(*xy_coordinates_to_ij_coordinates(*g_dest_coordinates)))
+
+  _draw_path_on_image(path, args.obstacles)
+
+  print("Source: " + str(g_src_coordinates))
+  print("Goal: " + str(g_dest_coordinates))
+  print("Path: " + " -> ".join([str(p) for p in path]))
 
 
 if __name__ == "__main__":
@@ -331,7 +395,6 @@ if __name__ == "__main__":
   parser.add_argument('-g','--dest_coordinates', nargs=2, default=[0.3, 0.7], help='Goal x, y location in world coords')
   parser.add_argument('-o','--obstacles', nargs='?', type=str, default='obstacles_test1.png', help='Black and white image showing the obstacle locations')
   args = parser.parse_args()
-
 
   part_1()
   # part_2(args)
