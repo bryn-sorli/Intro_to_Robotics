@@ -305,7 +305,7 @@ def part_2(args):
 
   path = reconstruct_path(prev, ij_to_vertex_index(*xy_coordinates_to_ij_coordinates(*g_src_coordinates)), ij_to_vertex_index(*xy_coordinates_to_ij_coordinates(*g_dest_coordinates)))
 
-  # _draw_path_on_image(path, args.obstacles)
+  _draw_path_on_image(path, args.obstacles)
 
   print("Source: " + str(g_src_coordinates))
   print("Goal: " + str(g_dest_coordinates))
