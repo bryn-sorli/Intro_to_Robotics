@@ -15,7 +15,8 @@ Plugins/
 /Makefile
 
 # avoid checking uproject because this is usually just version change
-*.uproject
+# no you should check in uproject
+# *.uproject
 
 # Do not include files not needed for building (based on guidelines from Unreal)
 /Binaries/
